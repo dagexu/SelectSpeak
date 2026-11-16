@@ -153,7 +153,7 @@ class App:
 
     def stop_speaking(self):
         self.pipeline.stop()
-        self.bar.schedule_hide(600)
+        self.bar.schedule_hide(450)
 
     def change_rate(self, delta: int):
         self.set_rate(int(self.cfg.get("rate", 0)) + delta)
