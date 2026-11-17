@@ -1,42 +1,54 @@
-# SelectSpeak · 划词朗读
+# 开口读 · SelectSpeak
 
-> 在 Windows 上选中任意文字，松手就自动读出来。
+> 选中文字，松手就读。不按键，不开窗，不打断你正在做的事。
 
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?logo=windows)
 ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![license](https://img.shields.io/badge/license-MIT-green)
 [![release](https://img.shields.io/github/v/release/dagexu/SelectSpeak?color=0078D4&label=download)](https://github.com/dagexu/SelectSpeak/releases/latest)
 
-英文一句话：**Select any text in any Windows app — it gets read aloud automatically.** Powered by Microsoft Edge neural TTS.
+**English** — Select any text in any Windows app and it reads aloud immediately. No hotkey, no popup window, no clipboard pollution. Powered by Microsoft Edge neural TTS.
 
 ---
 
 ## 下载
 
-**[⬇ 下载 SelectSpeak.exe](https://github.com/dagexu/SelectSpeak/releases/latest)** — 单文件约 21 MB，免安装，**不需要装 Python 或任何运行时**。
+**[⬇ 下载 开口读.exe（SelectSpeak.exe）](https://github.com/dagexu/SelectSpeak/releases/latest)** — 单文件约 21 MB，免安装，**不需要装 Python 或任何运行时**。
 
 双击运行，托盘出现蓝色喇叭图标，没有主窗口。然后去任意程序里拖选一段文字，松手就开始读。
 
-想自己编译或改代码 → 见下方「从源码运行」。
+## 它跟别的朗读工具差在哪
 
----
+一句话：**别的工具是「先选中，再告诉它读」；开口读是「选中就是告诉它读」。**
 
-## 它解决什么问题
+| 工具 | 怎么触发 | 能读哪里 | 顺带翻译 | 价格 |
+|---|---|---|---|---|
+| **开口读** | **选中松手，零操作** | **任意 Windows 程序** | **悬浮条同步显示** | 免费开源 |
+| [Read Aloud](https://github.com/Read-Aloud/read-aloud)（1.8k★） | 选中后点扩展图标 | 只有浏览器里 | 无 | 免费开源 |
+| 朗读女 | 选中后按 F1 | 任意程序 | 无 | 免费闭源 |
+| Voco.talk | 选中后点鼠标旁按钮，或 `Ctrl+Alt+R` | 任意程序 | 无 | 免费闭源 |
+| Speechify / NaturalReader | 选中后点按钮，需登录 | 桌面 + 手机 | 有 | 约 ¥700–1000 / 年 |
 
-Windows 没有原生的划词朗读。系统自带的"讲述人"要接管整个屏幕；Edge 浏览器的"朗读"只管浏览器里；各种 TTS 软件要么要你复制粘贴、要么要你先开一个窗口。
+差的那一下，恰好是这类工具最容易被放弃的地方：读一篇文章要按几十次快捷键，按到第三次就懒得用了。
 
-SelectSpeak 只做一件事：**选中即读**。全局鼠标钩子监听拖选动作，抓出选中的文字，走微软 Edge 的神经语音念出来。没有主窗口，托盘常驻，不打断你正在做的事。
+> 顺带说清楚：Read Aloud 是浏览器扩展里做得最好那个，1.8k 星。它的限制不是做得不好，是**浏览器扩展管不到浏览器以外的窗口**。你要读 PDF、Word、终端输出、聊天记录，它一个都碰不到。
 
 ## 功能
 
 - **选中即读** —— 拖选、双击选词、三击选段都会触发，不用按任何键
-- **音质好** —— 微软 Edge 的在线神经语音，中文有晓晓 / 云希 / 云健 / 云扬，还有东北话、陕西话、粤语、台湾腔
-- **响应快** —— 从选中到出声约 0.5 秒（见下方"技术实现"）
+- **音质好** —— 微软 Edge 在线神经语音，中文有晓晓 / 云希 / 云健 / 云扬，还有东北话、陕西话、粤语、台湾腔
+- **响应快** —— 从松手到出声约 0.5 秒（见下方「技术实现」）
 - **悬浮控制条** —— 暂停 / 继续 / 停止 / 语速 / 换音色，可拖动；读完 **0.8 秒内淡出**，不留残影
-- **英译中** —— 选中英文时，悬浮条里同步显示中文译文（需自备翻译接口，见下方"翻译"）
+- **英译中** —— 选中英文时，悬浮条里同步显示中文译文（需自备翻译接口，见下方「翻译」）
 - **不污染剪贴板** —— 抓完把原剪贴板文本还原
 - **终端安全** —— 用 `Ctrl+Insert` 而不是 `Ctrl+C` 抓词，不会误触发中断信号
 - **长文本不卡顿** —— 自动分句 + 双缓冲，一句在播时下一句已经在合成
+
+## 适合谁，不适合谁
+
+**适合**：看英文文档、论文、新闻看到眼睛发酸；想边做别的事边听长文；受够了「打开朗读软件 → 粘贴 → 点播放」这套流程。
+
+**不适合**：需要把语音存成 mp3 文件（用 [tts-vue](https://github.com/LokerL/tts-vue)）；要管理整本书书架（用电子书阅读器）；只在浏览器里用（装 Read Aloud 更省事）。
 
 ## 使用
 
@@ -108,11 +120,11 @@ python build.py       # 打包成 dist/SelectSpeak.exe（单文件，约 21 MB�
 
 ## 技术实现
 
-有意思的地方有三处，都跟"延迟"和"不打扰"有关。
+有意思的地方有三处，都跟「延迟」和「不打扰」有关。
 
 ### 1. 复用 WebSocket，把延迟从 2s 压到 0.5s
 
-`edge-tts` 库每次合成都新建一条 WebSocket 连接，握手固定吃掉约 2 秒，**跟文本长短无关**。对"选中即读"来说这是致命的——你选完文字要愣两秒才出声。
+`edge-tts` 库每次合成都新建一条 WebSocket 连接，握手固定吃掉约 2 秒，**跟文本长短无关**。对「选中即读」来说这是致命的——你选完文字要愣两秒才出声。
 
 实测发现微软这个接口允许**在同一条连接上连续做多轮合成**：
 
@@ -132,7 +144,7 @@ python build.py       # 打包成 dist/SelectSpeak.exe（单文件，约 21 MB�
 
 这也是 exe 只有 21 MB 的原因——没有音频库、没有 GUI 框架，界面是 tkinter 画的。
 
-### 3. 判定"有没有选中"用剪贴板序列号
+### 3. 判定「有没有选中」用剪贴板序列号
 
 抓词的方式是模拟复制。难点在于：**怎么知道这次复制真的抓到了东西**（而不是点了个空白处）？
 
@@ -162,7 +174,7 @@ on_text ─┬─> TTS 合成 ─> 播放
 
 | 限制 | 原因 |
 |---|---|
-| 管理员权限的窗口抓不到词 | Windows UIPI 会拦截普通进程发送的按键。需要以管理员身份运行 SelectSpeak |
+| 管理员权限的窗口抓不到词 | Windows UIPI 会拦截普通进程发送的按键。需要以管理员身份运行开口读 |
 | 必须联网 | 语音是微软在线服务合成 |
 | 剪贴板里的图片/文件会被替换成文本 | 模拟复制的固有代价（文本会还原，其他格式不会） |
 | 少数程序不响应 `Ctrl+Insert` | 可在 `config.json` 里把 `copy_key` 改成 `ctrl_c` |
@@ -181,7 +193,7 @@ on_text ─┬─> TTS 合成 ─> 播放
 | `copy_key` | `insert` 或 `ctrl_c` | `insert` |
 | `float_bar` | 显示悬浮条 | `true` |
 | `enabled` | 总开关 | `true` |
-| `translate` | 翻译配置（见上方"翻译"） | 关闭 |
+| `translate` | 翻译配置（见上方「翻译」） | 关闭 |
 
 ## 项目结构
 
