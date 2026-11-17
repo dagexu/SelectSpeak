@@ -1,4 +1,5 @@
 """配置读写。配置放在 exe 同目录的 config.json。"""
+import base64
 import json
 import os
 import sys
@@ -6,6 +7,19 @@ from pathlib import Path
 
 APP_NAME = "SelectSpeak"
 APP_VERSION = "1.1.0"
+
+# 公共翻译服务（作者自建，免费开放）。
+# 令牌只做 base64 分段存放，不写明文：这只是别让人一眼 grep 走，
+# 客户端无论如何挡不住抓包，真正的防护是服务端限流。
+_TOKEN_PARTS = ("UTJGUVpQ", "MUVSV0Jk", "Rk1HMkFy", "NEs=")
+PUBLIC_TRANSLATE_URL = "http://159.75.226.202/translate"
+
+
+def public_token() -> str:
+    try:
+        return "".join(base64.b64decode(p).decode() for p in _TOKEN_PARTS)
+    except Exception:
+        return ""
 
 DEFAULT_VOICES = [
     ("zh-CN-XiaoxiaoNeural", "晓晓 · 女声 · 温柔自然"),
@@ -36,10 +50,13 @@ DEFAULTS = {
     # 翻译：选中英文时在悬浮条里显示中文。
     # 请求完全由下面几项描述，换服务只改配置不动代码。
     "translate": {
-        "enabled": False,
-        "url": "",                                        # 例: http://your-server/translate
+        "enabled": True,
+        "url": PUBLIC_TRANSLATE_URL,
         "method": "POST",
-        "headers": {"Content-Type": "application/json"},
+        "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + public_token(),
+        },
         "payload": {"from": "en", "to": "zh", "text": "{text}"},
         "result_path": "result",                          # 从返回 JSON 里取译文的字段路径
         "timeout": 5,
