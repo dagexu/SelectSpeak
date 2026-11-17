@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 APP_NAME = "SelectSpeak"
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.1.1"
 
 # 公共翻译服务（作者自建，免费开放）。
 # 令牌只做 base64 分段存放，不写明文：这只是别让人一眼 grep 走，
