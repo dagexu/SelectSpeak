@@ -54,6 +54,10 @@ class Tray:
     def _post(self, fn, *args):
         self.root.after(0, lambda: fn(*args))
 
+    def _translate_on(self) -> bool:
+        conf = self.cfg.get("translate") or {}
+        return bool(conf.get("enabled"))
+
     def _build_menu(self):
         def voice_items():
             for vid, label in DEFAULT_VOICES:
@@ -75,6 +79,11 @@ class Tray:
                 lambda: self._post(self.cb["toggle_bar"],
                                    not self.cfg.get("float_bar", True)),
                 checked=lambda item: bool(self.cfg.get("float_bar", True)),
+            ),
+            pystray.MenuItem(
+                "显示译文（英译中）",
+                lambda: self._post(self.cb["toggle_translate"], not self._translate_on()),
+                checked=lambda item: self._translate_on(),
             ),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("语速", pystray.Menu(

@@ -11,6 +11,7 @@ import tkinter as tk
 from config import APP_VERSION, Config, LOG_PATH
 from selection import SelectionWatcher
 from speech import SpeechPipeline
+from translator import Translator
 from ui_bar import FloatBar
 from ui_tray import Tray
 
@@ -68,6 +69,8 @@ class App:
         self.pipeline = SpeechPipeline(self.cfg, self.log)
         self.pipeline.start(wait=False)
 
+        self.translator = Translator(self.cfg, self.log)
+
         self.bar = FloatBar(
             self.root,
             self.cfg,
@@ -96,6 +99,7 @@ class App:
                 "set_rate": self.set_rate,
                 "voice": self.set_voice,
                 "toggle_bar": self.toggle_bar,
+                "toggle_translate": self.toggle_translate,
                 "stop": self.stop_speaking,
                 "quit": self.quit,
             },
@@ -113,6 +117,11 @@ class App:
         self.root.after(120, self._tick)
         self.root.after(600, self._warmup_check)
         self.log(f"SelectSpeak v{APP_VERSION} 已启动")
+        if self.translator.available():
+            conf = self.translator.conf
+            self.log(f"译文已开启 -> {conf.get('url')}")
+        else:
+            self.log("译文未启用（config.json 里 translate.enabled 为 false 或 url 为空）")
         self.root.mainloop()
 
     def _warmup_check(self):
@@ -147,6 +156,24 @@ class App:
     def on_text(self, text: str):
         self.log(f"选中 {len(text)} 字: {text[:40]!r}")
         self.pipeline.speak(text)
+
+        # 翻译与朗读并行：请求发出去后立刻开始 TTS，不等译文
+        want = self.translator.should_translate(text)
+        self.bar.set_translation("", pending=want)
+        if want:
+            self.translator.translate_async(text, on_done=self._on_translated)
+
+    def _on_translated(self, result: str):
+        """后台线程回调，切回主线程再动界面。"""
+        try:
+            self.root.after(0, lambda: self._apply_translation(result))
+        except Exception:
+            pass
+
+    def _apply_translation(self, result: str):
+        if result:
+            self.log(f"译文 {len(result)} 字: {result[:30]!r}")
+        self.bar.set_translation(result or "", pending=False)
 
     def toggle_pause(self):
         self.pipeline.toggle_pause()
@@ -184,6 +211,21 @@ class App:
         self.tray.icon.update_menu()
         if not show:
             self.bar.hide()
+
+    def toggle_translate(self, on: bool):
+        conf = dict(self.cfg.get("translate") or {})
+        conf["enabled"] = bool(on)
+        self.cfg["translate"] = conf
+        self.cfg.save()
+        self.tray.icon.update_menu()
+        if not on:
+            self.bar.set_translation("", pending=False)
+            self.translator.cancel()
+            self.tray.notify("已关闭译文")
+        elif not self.translator.available():
+            self.tray.notify("已开启译文，但还没配置接口地址（config.json → translate.url）")
+        else:
+            self.tray.notify("选中英文时显示中文译文")
 
     def quit(self):
         self.log("正在退出")

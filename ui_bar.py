@@ -2,7 +2,7 @@
 
 视觉原则：
 - 只保留一个视觉重心（蓝色播放键），其余元素压低对比度
-- 三层信息：正文 / 进度 / 次要控件，行距留足
+- 三层信息：正文 / 进度 / 次要控件；开启翻译时多一层译文
 - 消失走淡出，不做硬切
 """
 import ctypes
@@ -17,6 +17,7 @@ TXT = "#ECECF1"
 CTRL = "#B9B9C4"
 SUBTLE = "#8B8B97"
 DIM = "#5E5E6A"
+TRANS = "#A8B8D4"
 ACCENT = "#4C8DFF"
 ACCENT_HI = "#6BA2FF"
 TRACK = "#2B2B34"
@@ -30,7 +31,9 @@ WS_EX_TOOLWINDOW = 0x00000080
 
 
 class FloatBar:
-    W, H = 560, 96
+    W = 560
+    H = 96          # 无译文
+    H_TRANS = 144   # 有译文：多两行译文，次要控件下移
 
     FADE_STEPS = 5
     FADE_INTERVAL = 24  # ms，5 × 24 ≈ 120ms 淡出
@@ -46,6 +49,10 @@ class FloatBar:
         self._hover = False
         self._speaking = False
         self._last_drawn = {}
+        self._last_state = {}
+        self._trans = ""
+        self._trans_pending = False
+        self._h = self.H
 
         self.win = tk.Toplevel(root)
         self.win.overrideredirect(True)
@@ -62,8 +69,11 @@ class FloatBar:
         self.f_meta = tkfont.Font(
             family="Microsoft YaHei UI", size=max(8, self.s(9))
         )
+        self.f_trans = tkfont.Font(
+            family="Microsoft YaHei UI", size=max(8, self.s(9))
+        )
 
-        W, H = self.s(self.W), self.s(self.H)
+        W, H = self.s(self.W), self.s(self._h)
         self.cv = tk.Canvas(
             self.win, width=W, height=H, bg=KEYCOLOR, highlightthickness=0, bd=0
         )
@@ -100,9 +110,9 @@ class FloatBar:
             sw = self.win.winfo_screenwidth()
             sh = self.win.winfo_screenheight()
             x = (sw - self.s(self.W)) // 2
-            y = sh - self.s(self.H) - self.s(120)
+            y = sh - self.s(self._h) - self.s(120)
         x = max(0, min(x, self.win.winfo_screenwidth() - self.s(self.W)))
-        y = max(0, min(y, self.win.winfo_screenheight() - self.s(self.H)))
+        y = max(0, min(y, self.win.winfo_screenheight() - self.s(self._h)))
         self.win.geometry(f"+{x}+{y}")
 
     def _make_noactivate(self):
@@ -129,10 +139,13 @@ class FloatBar:
         ]
         return self.cv.create_polygon(pts, smooth=True, **kw)
 
+    def _has_trans_block(self) -> bool:
+        return bool(self._trans or self._trans_pending)
+
     def _draw(self):
         cv = self.cv
         cv.delete("all")
-        W, H = self.s(self.W), self.s(self.H)
+        W, H = self.s(self.W), self.s(self._h)
 
         # 卡片
         self._round_rect(1, 1, W - 1, H - 1, self.s(20), fill=BG, outline=BORDER, width=1)
@@ -149,7 +162,6 @@ class FloatBar:
             cx - br, cy - br, cx + br, cy + br,
             fill=ACCENT, outline="", tags=("play_btn",),
         )
-        # 主按钮外圈微光（静止时不可见，hover 时换成亮色）
         cv.create_oval(
             cx - br - 1, cy - br - 1, cx + br + 1, cy + br + 1,
             fill="", outline="", width=1, tags=("play_ring",),
@@ -182,8 +194,12 @@ class FloatBar:
             px1, py, px1, py, fill=ACCENT, width=self.s(4), capstyle="round"
         )
 
-        # 次要控件行
-        my = self.s(75)
+        # 译文区（最多两行）
+        if self._has_trans_block():
+            self._draw_trans()
+
+        # 次要控件行：有译文时整体下移
+        my = self.s(123) if self._has_trans_block() else self.s(75)
         f = self.f_meta
 
         def hover_bg(x1, y1, x2, y2, tag):
@@ -193,21 +209,23 @@ class FloatBar:
             return rid
 
         # 语速
-        hover_bg(self.s(128), self.s(59), self.s(156), self.s(91), "hb_down")
+        hover_bg(self.s(128), my - self.s(16), self.s(156), my + self.s(16), "hb_down")
         cv.create_text(self.s(142), my, text="-", fill=DIM, font=f, tags=("rate_down",))
         self.cv_rate = cv.create_text(
             self.s(169), my, text="0%", anchor="center", fill=CTRL, font=f
         )
-        hover_bg(self.s(182), self.s(59), self.s(210), self.s(91), "hb_up")
+        hover_bg(self.s(182), my - self.s(16), self.s(210), my + self.s(16), "hb_up")
         cv.create_text(self.s(196), my, text="+", fill=DIM, font=f, tags=("rate_up",))
 
         cv.create_line(
-            self.s(224), self.s(65), self.s(224), self.s(85), fill=BORDER, width=1
+            self.s(224), my - self.s(10), self.s(224), my + self.s(10),
+            fill=BORDER, width=1,
         )
 
         # 音色
-        hover_bg(self.s(232), self.s(59), self.s(320), self.s(91), "hb_voice")
+        hover_bg(self.s(232), my - self.s(16), self.s(320), my + self.s(16), "hb_voice")
         self._voice_x = self.s(240)
+        self._meta_y = my
         self.cv_voice = cv.create_text(
             self._voice_x, my, text="晓晓", anchor="w", fill=CTRL, font=f,
             tags=("voice",),
@@ -239,6 +257,53 @@ class FloatBar:
 
         self._draw_play_icon(False)
         self._sync_voice_label()
+
+    def _draw_trans(self):
+        """译文区：左侧一道细竖线做视觉分隔，最多两行。"""
+        cv = self.cv
+        if self._trans:
+            lines = self._wrap(
+                self._trans, self.f_trans, self.s(self.W) - self.s(166)
+            )
+            color = TRANS
+        else:
+            lines = ["翻译中…"]
+            color = DIM
+
+        # 竖线高度跟着行数走，单行时不显得空
+        n = max(1, len(lines[:2]))
+        cv.create_line(
+            self.s(130), self.s(72),
+            self.s(130), self.s(72) + n * self.s(21) - self.s(4),
+            fill=BORDER, width=self.s(2), capstyle="round",
+        )
+        for i, line in enumerate(lines[:2]):
+            cv.create_text(
+                self.s(140), self.s(79) + i * self.s(21),
+                text=line, anchor="w", fill=color, font=self.f_trans,
+            )
+
+    def _wrap(self, text, font, avail, max_lines=2):
+        """按像素宽度折行，超出部分用省略号截断。"""
+        text = " ".join(text.split())
+        if not text:
+            return []
+        lines, cur = [], ""
+        for ch in text:
+            if font.measure(cur + ch) <= avail:
+                cur += ch
+                continue
+            lines.append(cur)
+            cur = ch
+            if len(lines) == max_lines:
+                last = lines[-1]
+                while last and font.measure(last + "…") > avail:
+                    last = last[:-1]
+                lines[-1] = last + "…"
+                return lines
+        if cur:
+            lines.append(cur)
+        return lines[:max_lines]
 
     def _draw_play_icon(self, paused: bool):
         cv = self.cv
@@ -306,7 +371,7 @@ class FloatBar:
         self.cv.itemconfigure(self.cv_rate, text="0%" if rate == 0 else f"{rate:+d}%")
         # 下拉小箭头：用线段画，跟着文字宽度走
         x = self._voice_x + self.f_meta.measure(name) + self.s(8)
-        y = self.s(75)
+        y = self._meta_y
         d = self.s(3)
         self.cv.coords(
             self.cv_chev, x - d, y - self.s(2), x, y + self.s(2), x + d, y - self.s(2)
@@ -350,6 +415,36 @@ class FloatBar:
         except Exception:
             return False
 
+    # ---------- 译文 ----------
+
+    def set_translation(self, text: str, pending: bool = False):
+        """设置译文。pending=True 表示请求在途，显示「翻译中…」。"""
+        text = (text or "").strip()
+        if text == self._trans and pending == self._trans_pending:
+            return
+        self._trans = text
+        self._trans_pending = pending
+        self._h = self.H_TRANS if (text or pending) else self.H
+        self._apply_size()
+        self._draw()
+        if self._last_state:
+            self._apply(self._last_state)
+
+    def _apply_size(self):
+        """把当前高度应用到 Canvas 和窗口。
+
+        注意：窗口处于 withdraw 状态时 Tk 会忽略 geometry，所以 show() 里
+        还要再调一次，否则译文先到、窗口后显示时高度会停在上一次的尺寸。
+        """
+        W, H = self.s(self.W), self.s(self._h)
+        x, y = self.win.winfo_x(), self.win.winfo_y()
+        try:
+            self.cv.config(width=W, height=H)
+            self.win.geometry(f"{W}x{H}+{x}+{y}")
+            self.win.update_idletasks()
+        except Exception as e:
+            self._log(f"调整尺寸失败: {e}")
+
     # ---------- 显隐 ----------
 
     def show(self):
@@ -360,7 +455,12 @@ class FloatBar:
                 self.win.attributes("-alpha", 1.0)
             except Exception:
                 pass
+            self._apply_size()
             self.win.deiconify()
+            try:
+                self.win.update_idletasks()
+            except Exception:
+                pass
             self.win.attributes("-topmost", True)
 
     def hide(self, animate: bool = True):
@@ -422,6 +522,7 @@ class FloatBar:
     # ---------- 状态刷新 ----------
 
     def refresh(self, state: dict):
+        self._last_state = dict(state)
         self._speaking = bool(state.get("speaking"))
 
         if not self._speaking:
@@ -431,7 +532,9 @@ class FloatBar:
 
         self._cancel_hide()
         self.show()
+        self._apply(state)
 
+    def _apply(self, state: dict):
         if self._last_drawn.get("paused") != state.get("paused"):
             self._draw_play_icon(bool(state.get("paused")))
             self._last_drawn["paused"] = state.get("paused")

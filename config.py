@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 APP_NAME = "SelectSpeak"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 
 DEFAULT_VOICES = [
     ("zh-CN-XiaoxiaoNeural", "晓晓 · 女声 · 温柔自然"),
@@ -33,6 +33,20 @@ DEFAULTS = {
     "float_bar": True,    # 显示悬浮控制条
     "float_pos": None,    # [x, y]，None 表示自动
     "autostart": False,
+    # 翻译：选中英文时在悬浮条里显示中文。
+    # 请求完全由下面几项描述，换服务只改配置不动代码。
+    "translate": {
+        "enabled": False,
+        "url": "",                                        # 例: http://your-server/translate
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "payload": {"from": "en", "to": "zh", "text": "{text}"},
+        "result_path": "result",                          # 从返回 JSON 里取译文的字段路径
+        "timeout": 5,
+        "min_chars": 2,
+        "max_chars": 1200,
+        "skip_if_cjk_ratio": 0.15,                        # 中文占比超过它就当成中文内容，不翻
+    },
 }
 
 
